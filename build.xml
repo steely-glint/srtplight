@@ -1,0 +1,26 @@
+<project name="phono-java-audio" default="build">
+  
+  <property environment="env" />
+
+
+  <target name="jar" depends="clean">
+    <mkdir dir="target"/>
+    <mkdir dir="build/lib/classes"/>
+    <javac destdir="build/lib/classes" target="1.5">
+            <src path="src" />
+    </javac>
+    <jar destfile="target/srtplight.jar" basedir="build/lib/classes">
+    </jar>
+    
+  </target>
+  
+  <target name="build" depends="jar">
+    <!-- Binary -->
+  </target>
+
+  <target name="clean">
+    <delete dir="target" />
+    <delete dir="build" />
+  </target>
+  
+</project>
