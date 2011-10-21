@@ -16,7 +16,6 @@ package com.phono.srtplight;
  * limitations under the License.
  *
  */
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -26,9 +25,10 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-
-public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
+public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
     final static int RTPHEAD = 12;
     final static private int RTPVER = 2;
@@ -57,6 +57,7 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
     protected int _tailIn;
     protected int _tailOut;
     private int _dtmfType = 101;
+    private Exception _lastx;
 
     public RTPProtocolImpl(int id, DatagramSocket ds, InetSocketAddress far, int type) {
         _ds = ds;
@@ -99,6 +100,7 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
                 parsePacket(dp);
             } catch (IOException x) {
                 Log.error(x.toString());
+                _lastx = x;
             }
         }
         // some tidyup here....
@@ -113,14 +115,14 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
     }
     /*
     public boolean sendDTMFData(byte[] data, long stamp, boolean mark) {
-        boolean ret = false;
-        try {
-            sendPacket(data, stamp, CodecList.DTMFPAYLOADTTYPE, mark);
-            ret = true;
-        } catch (Exception ex) {
-            Log.error(ex.toString());
-        }
-        return ret;
+    boolean ret = false;
+    try {
+    sendPacket(data, stamp, CodecList.DTMFPAYLOADTTYPE, mark);
+    ret = true;
+    } catch (Exception ex) {
+    Log.error(ex.toString());
+    }
+    return ret;
     }
 
     void audioSend() {
@@ -144,41 +146,61 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
     public void sendPacket(byte[] data, long stamp, int ptype) throws SocketException, IOException {
         sendPacket(data, stamp, ptype, false);
     }
-    public long getIndex(){
+
+    public long getIndex() {
         return _index;
     }
 
-    protected void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws SocketException, IOException {
+    public long getSeqno() {
+        return _seqno;
+    }
 
-        byte payload[] = new byte[RTPHEAD + data.length + _tailOut]; // assume no pad and no cssrcs
-        copyBits(RTPVER, 2, payload, 0); // version
-        // skip pad
+    public Exception getNClearLastX() {
+        Exception ret = _lastx;
+        ret = null;
+        return ret;
+    }
+
+    protected void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws IOException {
         // skip X
         // skip cc
         // skip M
         // all the above are zero.
-        if (marker) {
-            copyBits(1, 1, payload, 8);
-        }
-        copyBits(ptype, 7, payload, 9);
-        payload[2] = (byte) (_seqno >> 8);
-        payload[3] = (byte) _seqno;
-        payload[4] = (byte) (stamp >> 24);
-        payload[5] = (byte) (stamp >> 16);
-        payload[6] = (byte) (stamp >> 8);
-        payload[7] = (byte) stamp;
-        payload[8] = (byte) (_csrcid >> 24);
-        payload[9] = (byte) (_csrcid >> 16);
-        payload[10] = (byte) (_csrcid >> 8);
-        payload[11] = (byte) _csrcid;
-        for (int i = 0; i < data.length; i++) {
-            payload[i + RTPHEAD] = data[i];
-        }
-        appendAuth(payload);
-        DatagramPacket p = new DatagramPacket(payload, payload.length, _far);
-        _ds.send(p);
-        _seqno++;
-        Log.verb("sending RTP " + _ptype + " packet length " + payload.length + " to " + _far.toString());
+        try {
+            byte[] payload = new byte[RTPHEAD + data.length + _tailOut]; // assume no pad and no cssrcs
+            copyBits(RTPVER, 2, payload, 0); // version
+            // skip pad
+            // skip X
+            // skip cc
+            // skip M
+            // all the above are zero.
+            if (marker) {
+                copyBits(1, 1, payload, 8);
+            }
+            copyBits(ptype, 7, payload, 9);
+            payload[2] = (byte) (_seqno >> 8);
+            payload[3] = (byte) _seqno;
+            payload[4] = (byte) (stamp >> 24);
+            payload[5] = (byte) (stamp >> 16);
+            payload[6] = (byte) (stamp >> 8);
+            payload[7] = (byte) stamp;
+            payload[8] = (byte) (_csrcid >> 24);
+            payload[9] = (byte) (_csrcid >> 16);
+            payload[10] = (byte) (_csrcid >> 8);
+            payload[11] = (byte) _csrcid;
+            for (int i = 0; i < data.length; i++) {
+                payload[i + RTPHEAD] = data[i];
+            }
+            appendAuth(payload);
+            DatagramPacket p = new DatagramPacket(payload, payload.length, _far);
+            _ds.send(p);
+            _seqno++;
+            Log.verb("sending RTP " + _ptype + " packet length " + payload.length + " to " + _far.toString());
+        } catch (IOException ex) {
+            _lastx = ex;
+            Log.error("Not sending RTP "+ _ptype + " to " + _far.toString() + "ex = "+ex.getMessage());
+            throw ex;
+        } 
 
     }
 
@@ -321,9 +343,9 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
 
     }
 
-    protected void deliverPayload(byte[] payload, long stamp, int ssrc,char seqno) {
+    protected void deliverPayload(byte[] payload, long stamp, int ssrc, char seqno) {
         if (_rtpds != null) {
-            _rtpds.dataPacketReceived(payload, stamp,getIndex(seqno));
+            _rtpds.dataPacketReceived(payload, stamp, getIndex(seqno));
         }
     }
 
@@ -358,14 +380,15 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
         _listen.start();
     }
 
-    public DatagramSocket getDS(){
+    public DatagramSocket getDS() {
         return _ds;
     }
 
     public boolean finished() {
         return _listen == null;
     }
-    public void sendDigit(String value, long stamp, int samples, int duration ) throws SocketException, IOException {
+
+    public void sendDigit(String value, long stamp, int samples, int duration) throws SocketException, IOException {
         /*
         Event  encoding (decimal)
         _________________________
@@ -445,17 +468,16 @@ public class RTPProtocolImpl  extends BitUtils implements RTPProtocolFace {
 
     }
 
-   public boolean sendDTMFData(byte[] data, long stamp, boolean mark) throws SocketException, IOException {
+    public boolean sendDTMFData(byte[] data, long stamp, boolean mark) throws SocketException, IOException {
         boolean ret = false;
-            sendPacket(data, stamp, _dtmfType, mark);
-            ret = true;
+        sendPacket(data, stamp, _dtmfType, mark);
+        ret = true;
         return ret;
     }
 
     public void setDTMFPayloadType(int type) {
         _dtmfType = type;
     }
-
 
     protected static class RTPPacketException extends IOException {
 
