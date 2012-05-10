@@ -243,12 +243,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         csrcn = copyBits(packet, 4, 4);
         ptype = copyBits(packet, 9, 7);
         ByteBuffer pb = ByteBuffer.wrap(packet);
-        /*
-        seqno = (char) ((packet[2] << 8) | (packet[3] & 0xff));
-        stamp = get4ByteInt(packet, 4);
-        sync = get4ByteInt(packet, 8);
 
-         */
         seqno = pb.getChar(2);
         stamp = pb.getInt(4);
         sync = pb.getInt(8);
