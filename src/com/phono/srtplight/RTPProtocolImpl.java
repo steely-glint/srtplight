@@ -58,6 +58,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     protected int _tailOut;
     private int _dtmfType = 101;
     private Exception _lastx;
+    private boolean _realloc = false;
 
     public RTPProtocolImpl(int id, DatagramSocket ds, InetSocketAddress far, int type) {
         _ds = ds;
@@ -91,6 +92,10 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         this(id, new DatagramSocket(local_audio_port), new InetSocketAddress(remote_media_address, remote_audio_port), type);
     }
 
+    public void setRealloc(boolean v){
+        _realloc =v ;
+    }
+
     protected void irun() {
         byte[] data = new byte[200];
         DatagramPacket dp = new DatagramPacket(data, data.length);
@@ -98,6 +103,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             try {
                 _ds.receive(dp);
                 parsePacket(dp);
+                if (_realloc){
+                    dp = new DatagramPacket(data, data.length);
+                }
             } catch (IOException x) {
                 Log.error(x.toString());
                 _lastx = x;

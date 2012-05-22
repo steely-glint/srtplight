@@ -38,6 +38,6 @@ public interface RTPProtocolFace {
     public void setDTMFPayloadType(int type);
 
     public void sendDigit(String value, long stamp, int samples, int duration ) throws SocketException, IOException;
-
+    public void setRealloc(boolean v);
 
 }
