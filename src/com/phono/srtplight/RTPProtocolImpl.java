@@ -69,7 +69,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _seqno = 0;
         _csrcid = _rand.nextInt();
         try {
-            _ds.connect(_far);
+            if (_far != null) {
+                _ds.connect(_far);
+            }
 
             _ds.setSoTimeout(100);
         } catch (SocketException ex) {
@@ -88,22 +90,30 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _first = true;
     }
 
+    public void setSSRC(long v){
+        _csrcid = v;
+    }
+    
     public RTPProtocolImpl(int id, String local_media_address, int local_audio_port, String remote_media_address, int remote_audio_port, int type) throws SocketException {
         this(id, new DatagramSocket(local_audio_port), new InetSocketAddress(remote_media_address, remote_audio_port), type);
     }
 
-    public void setRealloc(boolean v){
-        _realloc =v ;
+    public void setRealloc(boolean v) {
+        _realloc = v;
     }
 
     protected void irun() {
-        byte[] data = new byte[200];
+        byte[] data = new byte[1500];
         DatagramPacket dp = new DatagramPacket(data, data.length);
+        Log.verb("Max Datagram size " + data.length);
+
         while (_listen != null) {
             try {
                 _ds.receive(dp);
+                Log.verb("rtp loop");
+
                 parsePacket(dp);
-                if (_realloc){
+                if (_realloc) {
                     dp = new DatagramPacket(data, data.length);
                 }
             } catch (IOException x) {
@@ -121,6 +131,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     public void terminate() {
         _listen = null;
     }
+
     /*
     public boolean sendDTMFData(byte[] data, long stamp, boolean mark) {
     boolean ret = false;
@@ -200,22 +211,23 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 payload[i + RTPHEAD] = data[i];
             }
             appendAuth(payload);
-            DatagramPacket p = new DatagramPacket(payload, payload.length, _far);
+            DatagramPacket p = (_far ==null)?new DatagramPacket(payload, payload.length):
+                                             new DatagramPacket(payload, payload.length, _far);
             _ds.send(p);
             _seqno++;
-            Log.verb("sending RTP " + _ptype + " packet length " + payload.length + " to " + _far.toString());
+            Log.verb("sending RTP " + _ptype + " packet length " + payload.length );
         } catch (IOException ex) {
             _lastx = ex;
-            Log.error("Not sending RTP "+ _ptype + " to " + _far.toString() + "ex = "+ex.getMessage());
+            Log.error("Not sending RTP " + _ptype +  "ex = " + ex.getMessage());
             throw ex;
-        } 
+        }
 
     }
 
     protected void parsePacket(DatagramPacket dp) throws IOException {
 
         // parse RTP header (if we care .....)
- /*
+        /*
          *  0                   1                   2                   3
          *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
          * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -242,6 +254,8 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         char seqno = 0;
         long stamp = 0;
         int sync = 0;
+
+        Log.verb("got packet " +plen);
 
         if (plen < 12) {
             throw new RTPPacketException("Packet too short. RTP must be >12 bytes");
@@ -302,13 +316,11 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 Log.debug("roc is = " + ((SRTPProtocolImpl) this)._roc);
             }
 
-
             throw rpx;
         }
         deliverPayload(payload, stamp, sync, seqno);
 
-
-        Log.verb("got RTP " + ptype + " packet " + payload.length + " from " + _far.toString());
+        Log.verb("got RTP " + ptype + " packet " + payload.length );
 
     }
 
@@ -443,8 +455,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         copyBits(db, 6, data, 10);
         copyBits(samples, 16, data, 16);
 
-
-
         sendDTMFData(data, stamp, true);
 
         // try to ensure that the time between messages is slightly less than the
@@ -467,7 +477,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         sendDTMFData(data, stamp, false);
         sendDTMFData(data, stamp, false);
         sendDTMFData(data, stamp, false);
-
 
     }
 
