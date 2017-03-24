@@ -7,7 +7,7 @@
     <mkdir dir="target"/>
     <mkdir dir="build/lib/classes"/>
     <javac destdir="build/lib/classes" target="1.8">
-            <src path="src" />
+            <src path="src/main/java" />
     </javac>
     <jar destfile="target/srtplight.jar" basedir="build/lib/classes">
     </jar>
