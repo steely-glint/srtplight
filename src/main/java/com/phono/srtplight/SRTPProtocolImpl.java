@@ -184,7 +184,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
         }
         try {
-            _scIn.deriveKeys(0/*_index*/);
+            _scIn.deriveKeys(0);
 
             if (_doAuth) {
                 Mac hmac = _scIn.getAuthMac();

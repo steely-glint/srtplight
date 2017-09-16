@@ -1,26 +1,33 @@
 <project name="phono-java-audio" default="build">
   
-  <property environment="env" />
+    <property environment="env" />
 
 
-  <target name="jar" depends="clean">
-    <mkdir dir="target"/>
-    <mkdir dir="build/lib/classes"/>
-    <javac destdir="build/lib/classes" target="1.8">
+    <target name="jar" depends="clean">
+        <mkdir dir="target"/>
+        <mkdir dir="build/lib/classes"/>
+        <javac destdir="build/lib/classes" target="1.8">
             <src path="src/main/java" />
-    </javac>
-    <jar destfile="target/srtplight.jar" basedir="build/lib/classes">
-    </jar>
+        </javac>
+        <jar destfile="target/srtplight.jar" basedir="build/lib/classes">
+        </jar>
     
-  </target>
+    </target>
   
-  <target name="build" depends="jar">
-    <!-- Binary -->
-  </target>
+    <target name="build" depends="jar">
+        <!-- Binary -->
+    </target>
 
-  <target name="clean">
-    <delete dir="target" />
-    <delete dir="build" />
-  </target>
-  
+    <target name="clean">
+        <delete dir="target" />
+        <delete dir="build" />
+    </target>
+    <target name="run-selected-file-in-java">
+        <fail unless="run.class">Must set property 'run.class'</fail>
+        <java classname="${run.class}" failonerror="true" fork="true">
+            <classpath>
+                <!-- TODO configure the runtime classpath for your project here: -->
+            </classpath>
+        </java>
+    </target>
 </project>

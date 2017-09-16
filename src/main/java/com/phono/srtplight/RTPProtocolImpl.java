@@ -25,8 +25,6 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
@@ -44,7 +42,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     /* networky stuff bidriectional*/
     DatagramSocket _ds;
     SocketAddress _far;
-    Thread _listen;
+    protected Thread _listen;
     String _session;
     protected boolean _srtp = false;
     int _id;
@@ -88,6 +86,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _listen = new Thread(ir);
         _listen.setName(_session);
         _first = true;
+        Log.debug("RTP session "+this.getClass().getSimpleName()+_session);
     }
 
     public void setSSRC(long v){
@@ -105,19 +104,19 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     protected void irun() {
         byte[] data = new byte[1500];
         DatagramPacket dp = new DatagramPacket(data, data.length);
-        Log.verb("Max Datagram size " + data.length);
+        Log.debug("Max Datagram size " + data.length);
+        Log.debug("address is  " +_ds.getLocalSocketAddress().toString());
 
         while (_listen != null) {
             try {
+                Log.debug("rtp loop");
                 _ds.receive(dp);
-                Log.verb("rtp loop");
-
                 parsePacket(dp);
                 if (_realloc) {
                     dp = new DatagramPacket(data, data.length);
                 }
-            } catch (IOException x) {
-                Log.error(x.toString());
+            } catch (Exception x) {
+                Log.error(this.getClass().getSimpleName()+" "+ x.toString());
                 _lastx = x;
             }
         }
