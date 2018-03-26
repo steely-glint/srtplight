@@ -310,7 +310,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
         }
     }
 
-    private ByteBuffer getPepper(int ssrc, long idx) {
+    static ByteBuffer getPepper(int ssrc, long idx) {
         //(SSRC * 2^64) XOR (i * 2^16)
         ByteBuffer pepper = ByteBuffer.allocate(16);
         pepper.putInt(4, ssrc);
