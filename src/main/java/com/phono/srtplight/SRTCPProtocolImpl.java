@@ -3,9 +3,11 @@ package com.phono.srtplight;
 import static com.phono.srtplight.SRTPProtocolImpl.getHex;
 import static com.phono.srtplight.SRTPProtocolImpl.getPepper;
 import static com.phono.srtplight.SRTPSecContext.saba;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -36,6 +38,8 @@ public class SRTCPProtocolImpl {
     private boolean _doAuth = true;
     private int _tailIn;
     private int _tailOut;
+    private DatagramSocket outDs;
+    private int index;
 
     public SRTCPProtocolImpl(Properties l, Properties r) {
         init(l, r);
@@ -56,6 +60,56 @@ public class SRTCPProtocolImpl {
             Log.error(" error in constructor " + ex.getMessage());
             ex.printStackTrace();
         }
+    }
+
+    public void sendSR(long ssrc, long ntp, long stamp, long pkts, long octs) throws IOException, GeneralSecurityException {
+        RTCP.SenderReport sr = RTCP.mkSenderReport();
+        sr.setNTPStamp(ntp);
+        sr.setRTPStamp(stamp);
+        sr.setSSRC(ssrc);
+        sr.setSenderOctets(octs);
+        sr.setSenderPackets(pkts);
+        Log.debug("RTCP about to build " + sr);
+        outbound(sr);
+    }
+
+    public void sendRR() throws IOException, GeneralSecurityException {
+        RTCP.ReceiverReport rr = RTCP.mkReceiverReport();
+        rr.setSSRC(1L);
+        Log.debug("RTCP about to build " + rr);
+        outbound(rr);
+    }
+    private void outbound(RTCP rtcp) throws IOException, GeneralSecurityException {
+        int ebl = rtcp.estimateBodyLength();
+        int fpl = 4 * (ebl + 1) + 4 + this._tailOut;
+        ByteBuffer bbo = ByteBuffer.allocate(fpl);
+        rtcp.addBody(bbo);
+        Log.debug("RTCP built " + rtcp);
+        Log.verb("packet body "+getHex(bbo.array()));
+        encrypt(bbo, index, (int) rtcp.ssrc);
+        Log.debug("RTCP encrypted " + rtcp);
+        Log.verb("packet body "+getHex(bbo.array()));
+        bbo.putInt((1 << 31) | (0x7fffffff & index));
+        Log.debug("RTCP added index " + rtcp);
+        Log.verb("packet body "+getHex(bbo.array()));
+        appendAuth(bbo);
+        Log.debug("RTCP authed " + rtcp);
+        Log.verb("packet body "+getHex(bbo.array()));
+
+        byte[] out = bbo.array();
+        DatagramPacket p = new DatagramPacket(out, 0, out.length);
+        if (outDs != null) {
+            this.outDs.send(p);
+        } else {
+            Log.debug("RTCP Dummy. Wanted to send this " + getHex(p.getData()));
+            try {
+                inbound(p);
+            } catch (InvalidRTCPPacketException ex) {
+                Log.error("Can't parse RTCP packet");
+            }
+        }
+        Log.debug("RTCP sent " + rtcp);
+
     }
 
     /*
@@ -139,6 +193,31 @@ public class SRTCPProtocolImpl {
         }
     }
 
+    /**
+     * calculate the outbound auth and put it at the end of the packet starting
+     * at length - _tail space is already allocated
+     */
+    void appendAuth(ByteBuffer m) throws RTPProtocolImpl.RTPPacketException, GeneralSecurityException {
+
+        // strictly we might need to derive the keys here too -
+        // since we might be doing auth but no crypt.
+        // we don't support that so nach.
+        Mac mac = _scOut.getAuthMac();
+        int top = m.limit();
+        m.position(0);
+        int authLoc = top - _tailOut;
+        m.limit(authLoc);
+        mac.update(m);
+        byte[] auth = mac.doFinal();
+        m.limit(top);
+        m.position(authLoc);
+        m.put(auth,0,_tailOut);
+        m.position(0);
+        if (Log.getLevel() > Log.DEBUG) {
+            Log.verb("Authed packet " + getHex(m.array()));
+        }
+    }
+
     public RTCP[] inbound(DatagramPacket pkt) throws GeneralSecurityException, InvalidRTCPPacketException {
         ArrayList<RTCP> rtcps = new ArrayList();
         int len = pkt.getLength();
@@ -183,23 +262,26 @@ public class SRTCPProtocolImpl {
             try {
                 this.checkAuth(data, len);
             } catch (RTPProtocolImpl.RTPPacketException ex) {
+                if (Log.getLevel()>=Log.DEBUG){
+                    ex.printStackTrace();
+                }
                 throw new GeneralSecurityException("Can't check auth...");
             }
             bb.position(0);
             decrypt(bb, len, tail_len, ssrc, index);
             bb.position(0);
-            while (bb.remaining() >= CLEARHEAD+tail_len) {
-                Log.debug("RTCP packet starts at "+bb.position());
+            while (bb.remaining() >= CLEARHEAD + tail_len) {
+                Log.debug("RTCP packet starts at " + bb.position());
                 RTCP rtcp = RTCP.mkRTCP(bb);
-                Log.debug("RTCP packet was: "+rtcp.toString());
+                Log.debug("RTCP packet was: " + rtcp.toString());
                 rtcps.add(rtcp);
             }
         }
 
         RTCP[] ret = new RTCP[rtcps.size()];
-        int i=0;
-        for (RTCP rtcp:rtcps){
-            ret[i++]= rtcp;
+        int i = 0;
+        for (RTCP rtcp : rtcps) {
+            ret[i++] = rtcp;
         }
         return ret;
 
@@ -208,9 +290,9 @@ public class SRTCPProtocolImpl {
     void decrypt(ByteBuffer pkt, int len, int tail_len, int ssrc, long index) throws GeneralSecurityException {
         int plen = len - tail_len - CLEARHEAD;
         byte[] payload = new byte[plen];
-        Log.verb("pkt remains "+pkt.remaining()+" offset "+CLEARHEAD+" plen "+plen);
-        for (int i=0;i<plen;i++){
-            payload [i] = pkt.get(i+CLEARHEAD);
+        Log.verb("pkt remains " + pkt.remaining() + " offset " + CLEARHEAD + " plen " + plen);
+        for (int i = 0; i < plen; i++) {
+            payload[i] = pkt.get(i + CLEARHEAD);
         }
         ByteBuffer in = ByteBuffer.wrap(payload);
         // aes likes the buffer a multiple of 32 and longer than the input.
@@ -218,8 +300,8 @@ public class SRTCPProtocolImpl {
         ByteBuffer out = ByteBuffer.allocate(pl);
         ByteBuffer pepper = getPepper(ssrc, index);
         _scIn.decipher(in, out, pepper);
-        for (int i=0;i<payload.length;i++){
-            pkt.put(i+CLEARHEAD, out.get(i));
+        for (int i = 0; i < payload.length; i++) {
+            pkt.put(i + CLEARHEAD, out.get(i));
         }
     }
 
@@ -227,26 +309,60 @@ public class SRTCPProtocolImpl {
         Log.setLevel(Log.ALL);
         try {
             short[] testPacketS = {
-                0x81,0xc9,0x00,0x07,0x00,0x00,0x00,0x01,0xd4,0x67,0xf8,0x33,0x73,0xd7,0xc5,0xd8,
-                0x63,0x4f,0x82,0x74,0x71,0x0a,0x1c,0x01,0x1f,0xa4,0xa9,0x05,0x33,0x40,0x2b,0x67,
-                0x7b,0x88,0x8b,0x4e,0x6c,0xfe,0x33,0xd2,0xdf,0x28,0x02,0xd2,0x47,0x6f,0x1c,0x28,
-                0x1a,0x25,0xc4,0xa4,0xf5,0x06,0x26,0x9f,0x79,0xd7,0x7b,0x94,0x77,0xd6,0x48,0x30,
-                0xcb,0x31,0xd7,0x7a,0x80,0x00,0x00,0x1e,0x9d,0xa2,0x6c,0xf1,0x83,0xf1,0x97,0x84,
-                0x7d,0x2d};
-            byte [] testpacket = saba(testPacketS);
+                0x81, 0xc9, 0x00, 0x07, 0x00, 0x00, 0x00, 0x01, 0xd4, 0x67, 0xf8, 0x33, 0x73, 0xd7, 0xc5, 0xd8,
+                0x63, 0x4f, 0x82, 0x74, 0x71, 0x0a, 0x1c, 0x01, 0x1f, 0xa4, 0xa9, 0x05, 0x33, 0x40, 0x2b, 0x67,
+                0x7b, 0x88, 0x8b, 0x4e, 0x6c, 0xfe, 0x33, 0xd2, 0xdf, 0x28, 0x02, 0xd2, 0x47, 0x6f, 0x1c, 0x28,
+                0x1a, 0x25, 0xc4, 0xa4, 0xf5, 0x06, 0x26, 0x9f, 0x79, 0xd7, 0x7b, 0x94, 0x77, 0xd6, 0x48, 0x30,
+                0xcb, 0x31, 0xd7, 0x7a, 0x80, 0x00, 0x00, 0x1e, 0x9d, 0xa2, 0x6c, 0xf1, 0x83, 0xf1, 0x97, 0x84,
+                0x7d, 0x2d};
+            byte[] testpacket = saba(testPacketS);
 
             Properties r = new Properties();
             r.load(new StringReader("crypto-suite=AES_CM_128_HMAC_SHA1_80\nrequired=1\nkey-params=inline:IzdXQaD4zH55rctZ8O+0ip3nX+FKXmuJKgmudPej\n"));
             Properties l = new Properties();
             l.load(new StringReader("crypto-suite=AES_CM_128_HMAC_SHA1_80\nrequired=1\nkey-params=inline:rpKkWGtGVlqxzzFSaR26P+e1UAC4AduIhJSsNTOK\n"));
-            SRTCPProtocolImpl testMe = new SRTCPProtocolImpl(l, r);
-            DatagramPacket pkt = new DatagramPacket(testpacket,testpacket.length);
+            SRTCPProtocolImpl testMe = new SRTCPProtocolImpl(r, r);
+            DatagramPacket pkt = new DatagramPacket(testpacket, testpacket.length);
+            Log.debug("----------> fake inbound packet");
             testMe.inbound(pkt);
+            Log.debug("----------> verify appendAuth mechanism");
+            ByteBuffer va = ByteBuffer.wrap(testpacket);
+            Log.debug("Before Auth: "+getHex(va.array()));
+            testMe._scOut.deriveKeys(0);
+            testMe.appendAuth(va);
+            Log.debug("After  Auth: "+getHex(va.array()));
+
+            Log.debug("----------> fake outbound packet");
+            testMe.index = 0x777777;
+            testMe.sendSR(0x53535353, 1500, 0, 1, 1408);
+            testMe.sendRR();
 
         } catch (Throwable t) {
             Log.error("Thrown " + t.getMessage());
             t.printStackTrace();
         }
     }
+
+    public void setDS(DatagramSocket ds) {
+        outDs = ds;
+    }
+
+    private void encrypt(ByteBuffer bbo, long idx, int ssrc) throws GeneralSecurityException {
+        _scOut.deriveKeys(idx);
+        int pos = bbo.position();
+        int paylen = pos - CLEARHEAD;
+        int pl = (((paylen / 32) + 2) * 32);
+        byte[] bin = new byte[paylen];
+        bbo.position(CLEARHEAD);
+        bbo.get(bin, 0, paylen);
+        ByteBuffer in = ByteBuffer.wrap(bin);
+        ByteBuffer out = ByteBuffer.allocate(pl);
+        ByteBuffer pepper = getPepper(ssrc, idx);
+        _scOut.decipher(in, out, pepper);
+        bbo.position(CLEARHEAD);
+        bbo.put(out.array(),0,paylen);
+        bbo.position(pos);
+    }
+
 
 }

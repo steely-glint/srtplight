@@ -33,6 +33,8 @@ public class RTCP {
     final static int BYE = 203;
     final static int RTPFB = 205;
     final static int PSFB = 206;
+
+
     protected char pt;
     protected long ssrc;
 
@@ -176,13 +178,23 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 Log.error("packets differ at:"+i);
             }
         }
+        ReceiverReport rro = mkReceiverReport();
+        ebl = sro.estimateBodyLength();
+        bbo = ByteBuffer.allocate(4*(ebl+1));
+        rro.addBody(bbo);
+        pky = bbo.array();
+        Log.debug("rro "+rro);
+        Log.debug("rro "+getHex(pky));
     }
 
     public static SenderReport mkSenderReport() {
         SenderReport ret = new SenderReport();
         return ret;
     }
-
+    static ReceiverReport mkReceiverReport() {
+        ReceiverReport ret = new ReceiverReport();
+        return ret;
+    }
     int estimateBodyLength() { // this is int 32s -1
         return 1;
     }
@@ -195,7 +207,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         return 0;
     }
 
-    private static class SenderReport extends RTCP {
+    static class SenderReport extends RTCP {
 
         /*
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -226,11 +238,11 @@ info   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             rtpstamp = s;
         }
 
-        public void setSenderOctets(long s) {
+        public void setSenderPackets(long s) {
             senderPkts = s;
         }
 
-        public void setSenderPackets(long s) {
+        public void setSenderOctets(long s) {
             senderOcts = s;
         }
 
@@ -293,7 +305,7 @@ info   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     }
 
-    private static class ReceiverReport extends RTCP {
+    static class ReceiverReport extends RTCP {
 
         /*
                 0                   1                   2                   3
@@ -340,6 +352,24 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 ReportBlock rblock = new ReportBlock(bb);
                 reports.add(rblock);
             }
+        }
+        @Override
+        public void addBody(ByteBuffer bb) {
+            super.addBody(bb);
+        }
+
+        @Override
+        int getRC() {
+            return reports.size();
+        }
+
+        @Override
+        int estimateBodyLength() {
+            return 6 + (6 * reports.size());
+        }
+        private ReceiverReport() {
+            reports = new ArrayList();
+            pt = RR;
         }
 
         public String toString() {

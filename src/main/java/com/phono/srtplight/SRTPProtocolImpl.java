@@ -296,7 +296,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     }
 
     @Override
-    protected void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws SocketException,
+    public void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws SocketException,
             IOException {
         try {
             if (_doCrypt) {

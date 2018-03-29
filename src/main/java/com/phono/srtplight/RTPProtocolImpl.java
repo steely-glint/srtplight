@@ -57,6 +57,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     private int _dtmfType = 101;
     private Exception _lastx;
     private boolean _realloc = false;
+    private long[] csrc;
 
     public RTPProtocolImpl(int id, DatagramSocket ds, InetSocketAddress far, int type) {
         _ds = ds;
@@ -262,6 +263,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         ver = copyBits(packet, 0, 2);
         pad = copyBits(packet, 2, 1);
         csrcn = copyBits(packet, 4, 4);
+        mark = copyBits(packet,8,1);
         ptype = copyBits(packet, 9, 7);
         ByteBuffer pb = ByteBuffer.wrap(packet);
 
@@ -272,7 +274,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             throw new RTPPacketException("Packet too short. CSRN =" + csrcn + " but packet only " + plen);
         }
 
-        long[] csrc = new long[csrcn];
+        csrc = new long[csrcn];
         int offs = RTPHEAD;
         for (int i = 0; i < csrcn; i++) {
             /*
@@ -317,7 +319,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
             throw rpx;
         }
-        deliverPayload(payload, stamp, sync, seqno);
+        deliverPayload(payload, stamp, sync, seqno,mark);
 
         Log.verb("got RTP " + ptype + " packet " + payload.length );
 
@@ -488,6 +490,10 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
     public void setDTMFPayloadType(int type) {
         _dtmfType = type;
+    }
+
+    protected void deliverPayload(byte[] payload, long stamp, int sync, char seqno, int mark) {
+        deliverPayload(payload,stamp,sync,seqno);
     }
 
     protected static class RTPPacketException extends IOException {
