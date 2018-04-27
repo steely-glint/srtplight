@@ -132,32 +132,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _listen = null;
     }
 
-    /*
-    public boolean sendDTMFData(byte[] data, long stamp, boolean mark) {
-    boolean ret = false;
-    try {
-    sendPacket(data, stamp, CodecList.DTMFPAYLOADTTYPE, mark);
-    ret = true;
-    } catch (Exception ex) {
-    Log.error(ex.toString());
-    }
-    return ret;
-    }
-
-    void audioSend() {
-    StampedAudio sa;
-    try {
-    while (null != (sa = _audio.readStampedAudio())) {
-    int fac = CodecList.getFac(_audio.getCodec());
-    sendPacket(sa.getData(), sa.getStamp() * fac, _ptype);
-    }
-    } catch (Exception ex) {
-    Log.error(ex.toString());
-    }
-
-    }
-     */
-
     static long get4ByteInt(byte[] b, int offs) {
         return ((b[offs++] << 24) | (b[offs++] << 16) | (b[offs++] << 8) | (0xff & b[offs++]));
     }
@@ -268,7 +242,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         ByteBuffer pb = ByteBuffer.wrap(packet);
 
         seqno = pb.getChar(2);
-        stamp = pb.getInt(4);
+        stamp = getUnsignedInt(pb,4);
         sync = pb.getInt(8);
         if (plen < (RTPHEAD + 4 * csrcn)) {
             throw new RTPPacketException("Packet too short. CSRN =" + csrcn + " but packet only " + plen);
@@ -277,11 +251,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         csrc = new long[csrcn];
         int offs = RTPHEAD;
         for (int i = 0; i < csrcn; i++) {
-            /*
-            csrc[i] = get4ByteInt(packet, offs);
-             *
-             */
-            csrc[i] = pb.getInt(offs);
+            csrc[i] = getUnsignedInt(pb, offs);
             offs += 4;
         }
         int endhead = offs;
@@ -391,7 +361,15 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             throw new RTPPacketException("Sync changed: was " + _sync + " now " + sync);
         }
     }
+    
+    public static long getUnsignedInt(ByteBuffer bb,int loc) {
+        return ((long) bb.getInt(loc) & 0xffffffffL);
+    }
 
+    public static void putUnsignedInt(ByteBuffer bb, long value, int loc) {
+        bb.putInt(loc,(int) (value & 0xffffffffL));
+    }
+    
     public void startrecv() {
         _listen.start();
     }
