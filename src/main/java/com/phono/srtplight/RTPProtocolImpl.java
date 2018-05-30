@@ -110,7 +110,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
         while (_listen != null) {
             try {
-                Log.debug("rtp loop");
+                Log.verb("rtp loop");
                 _ds.receive(dp);
                 parsePacket(dp);
                 if (_realloc) {
