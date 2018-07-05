@@ -69,7 +69,10 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _csrcid = _rand.nextInt();
         try {
             if (_far != null) {
-                _ds.connect(_far);
+                if (!far.getAddress().isLoopbackAddress()){
+                    _ds.connect(_far);
+                } // if we are talking to loopback we dont need the extra 
+                  // security of connecting.
             }
 
             _ds.setSoTimeout(100);
@@ -117,9 +120,12 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                     dp = new DatagramPacket(data, data.length);
                 }
             } catch (Exception x) {
-                Log.error(this.getClass().getSimpleName()+" "+ x.toString());
+                Log.debug(this.getClass().getSimpleName()+" "+ x.toString());
                 _lastx = x;
             }
+        }
+        if (!_ds.isClosed()){
+            _ds.close();
         }
         // some tidyup here....
     }
@@ -154,7 +160,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         return ret;
     }
 
-    protected void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws IOException {
+    public void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws IOException {
         // skip X
         // skip cc
         // skip M
@@ -267,6 +273,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         // quick plausibility checks
         // should check the ip address etc - but actually we better trust the OS
         // since we have 'connected' this socket meaning _only_ correctly sourced packets seen here.
+        // or packets from local host if that's where _far is
         if (ver != RTPVER) {
             throw new RTPPacketException("Only RTP version 2 supported");
         }
