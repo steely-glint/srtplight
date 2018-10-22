@@ -16,9 +16,6 @@ package com.phono.srtplight;
  * limitations under the License.
  *
  */
-
-
-
 import java.io.*;
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -30,7 +27,7 @@ import java.util.Properties;
 import javax.crypto.Mac;
 
 /**
- * see  http://www.faqs.org/rfcs/rfc3711.html
+ * see http://www.faqs.org/rfcs/rfc3711.html
  */
 public class SRTPProtocolImpl extends RTPProtocolImpl {
 
@@ -110,7 +107,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
      *
      */
-    /*
+ /*
 
     To authenticate and decrypt an SRTP packet, the receiver SHALL do the
     following:
@@ -228,18 +225,16 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
     @Override
     protected void deliverPayload(
-            byte[] payload, long stamp, int ssrc , char seqno) {
+            byte[] payload, long stamp, int ssrc, char seqno) {
         try {
             if (_doCrypt) {
                 decrypt(payload, ssrc);
             }
-            super.deliverPayload(payload, stamp, ssrc,seqno);
+            super.deliverPayload(payload, stamp, ssrc, seqno);
         } catch (GeneralSecurityException ex) {
             Log.error("problem with decryption " + ex.getMessage());
         }
     }
-
-
 
     @Override
     void updateCounters(
@@ -256,10 +251,11 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
     @Override
     /**
-     * calculate the outbound auth and put it at the end of the packet
-     * starting at length - _tail space is already allocated.
+     * calculate the outbound auth and put it at the end of the packet starting
+     * at length - _tail space is already allocated.
      */
-    void appendAuth(byte[] packet ) throws RTPPacketException {
+    void appendAuth(byte[] packet) throws RTPPacketException {
+
         if (_doAuth) {
             try {
                 // strictly we might need to derive the keys here too -
@@ -270,8 +266,8 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
                 ByteBuffer m = ByteBuffer.allocate(offs + 4);
                 m.put(packet, 0, offs);
                 int oroc = (int) (_seqno >>> 16);
-                if ((_seqno & 0xffff)== 0){
-                    Log.debug("seqno = 0 outgoing roc ="+oroc);
+                if ((_seqno & 0xffff) == 0) {
+                    Log.debug("seqno = 0 outgoing roc =" + oroc);
                 }
                 m.putInt(oroc);
                 if (Log.getLevel() > Log.DEBUG) {
@@ -292,6 +288,51 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
         }
         if (Log.getLevel() > Log.DEBUG) {
             Log.verb("Sending packet " + getHex(packet));
+        }
+    }
+
+    Character oseq = null;
+    int roc = 0;
+    static final int wrapdiff = 2 << 14;
+    @Override
+    /* 
+    variant that sets seqno itself rather than incrementing it .
+    which requires a small amount of guesswork
+     */
+    public void sendPacket(byte[] data, long stamp, char seqno, int ptype, boolean marker) throws SocketException, IOException {
+        int n = roc;
+        if (oseq == null) {
+            oseq = seqno;
+        }
+        /* check for wrap or unwrap */
+        int diff = seqno - oseq;
+        if (diff < (-wrapdiff)) {
+            // huge negative diff between seqs
+            // assume we wrapped
+            roc++;
+            n = roc;
+            Log.debug(" wrapped seqno " + (int) seqno + " oseq " + (int) oseq + " diff =" + diff + " outgoing roc =" + n);
+
+        }
+        if (diff > wrapdiff) {
+            // big positive
+            // pre-wrap packet was out of order
+            n = roc - 1;
+            Log.debug(" unwrapped seqno " + (int) seqno + " oseq " + (int) oseq + " diff =" + diff + " outgoing roc =" + n);
+        }
+        oseq = seqno;
+        long low = (long) seqno;
+        long high = ((long) n << 16);
+        _seqno = low | high;
+        try {
+            if (_doCrypt) {
+                _scOut.deriveKeys(stamp);
+                encrypt(data, (int) _csrcid, _seqno);
+            }
+            super.sendPacket(data, stamp, seqno, ptype, marker);
+        } catch (Exception ex) {
+            Log.error("problem encrypting packet" + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
@@ -382,7 +423,6 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
             s.terminate();
         }
 
-
     }
 
     private void testRcvSRTP() {
@@ -409,7 +449,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
         RTPDataSink sink = new RTPDataSink() {
 
-            public void dataPacketReceived(byte[] data, long stamp,long idx) {
+            public void dataPacketReceived(byte[] data, long stamp, long idx) {
                 Log.debug("got " + data.length + " bytes");
                 Log.debug("data =" + getHex(data));
                 Log.debug("Message is " + new String(data));
@@ -480,7 +520,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
         // kinda don'r expect this.....
         RTPDataSink sink = new RTPDataSink() {
 
-            public void dataPacketReceived(byte[] data, long stamp,long idx) {
+            public void dataPacketReceived(byte[] data, long stamp, long idx) {
                 Log.debug("got " + data.length + " bytes");
                 Log.debug("data =" + getHex(data));
                 Log.debug("Message is " + new String(data));

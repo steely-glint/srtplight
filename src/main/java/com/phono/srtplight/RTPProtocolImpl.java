@@ -39,6 +39,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     protected long _roc = 0; // only used for inbound we _know_ the answer for outbound.
     protected char _s_l;// only used for inbound we _know_ the answer for outbound.
 
+    
     /* networky stuff bidriectional*/
     DatagramSocket _ds;
     SocketAddress _far;
@@ -69,10 +70,10 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _csrcid = _rand.nextInt();
         try {
             if (_far != null) {
-                if (!far.getAddress().isLoopbackAddress()){
+                if (!far.getAddress().isLoopbackAddress()) {
                     _ds.connect(_far);
                 } // if we are talking to loopback we dont need the extra 
-                  // security of connecting.
+                // security of connecting.
             }
 
             _ds.setSoTimeout(100);
@@ -90,13 +91,13 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _listen = new Thread(ir);
         _listen.setName(_session);
         _first = true;
-        Log.debug("RTP session "+this.getClass().getSimpleName()+_session);
+        Log.debug("RTP session " + this.getClass().getSimpleName() + _session);
     }
 
-    public void setSSRC(long v){
+    public void setSSRC(long v) {
         _csrcid = v;
     }
-    
+
     public RTPProtocolImpl(int id, String local_media_address, int local_audio_port, String remote_media_address, int remote_audio_port, int type) throws SocketException {
         this(id, new DatagramSocket(local_audio_port), new InetSocketAddress(remote_media_address, remote_audio_port), type);
     }
@@ -109,7 +110,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         byte[] data = new byte[1500];
         DatagramPacket dp = new DatagramPacket(data, data.length);
         Log.debug("Max Datagram size " + data.length);
-        Log.debug("address is  " +_ds.getLocalSocketAddress().toString());
+        Log.debug("address is  " + _ds.getLocalSocketAddress().toString());
 
         while (_listen != null) {
             try {
@@ -120,11 +121,11 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                     dp = new DatagramPacket(data, data.length);
                 }
             } catch (Exception x) {
-                Log.debug(this.getClass().getSimpleName()+" "+ x.toString());
+                Log.debug(this.getClass().getSimpleName() + " " + x.toString());
                 _lastx = x;
             }
         }
-        if (!_ds.isClosed()){
+        if (!_ds.isClosed()) {
             _ds.close();
         }
         // some tidyup here....
@@ -161,6 +162,11 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     }
 
     public void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws IOException {
+        sendPacket(data, stamp, (char)_seqno, ptype, marker);
+        _seqno++;
+    }
+
+    public void sendPacket(byte[] data, long stamp, char seqno, int ptype, boolean marker) throws IOException {
         // skip X
         // skip cc
         // skip M
@@ -177,8 +183,8 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 copyBits(1, 1, payload, 8);
             }
             copyBits(ptype, 7, payload, 9);
-            payload[2] = (byte) (_seqno >> 8);
-            payload[3] = (byte) _seqno;
+            payload[2] = (byte) (seqno >> 8);
+            payload[3] = (byte) seqno;
             payload[4] = (byte) (stamp >> 24);
             payload[5] = (byte) (stamp >> 16);
             payload[6] = (byte) (stamp >> 8);
@@ -191,14 +197,14 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 payload[i + RTPHEAD] = data[i];
             }
             appendAuth(payload);
-            DatagramPacket p = (_far ==null)?new DatagramPacket(payload, payload.length):
-                                             new DatagramPacket(payload, payload.length, _far);
+            DatagramPacket p = (_far == null) ? new DatagramPacket(payload, payload.length)
+                    : new DatagramPacket(payload, payload.length, _far);
             _ds.send(p);
-            _seqno++;
-            Log.verb("sending RTP " + _ptype + " packet length " + payload.length );
+
+            Log.verb("sending RTP " + _ptype + " packet length " + payload.length);
         } catch (IOException ex) {
             _lastx = ex;
-            Log.error("Not sending RTP " + _ptype +  "ex = " + ex.getMessage());
+            Log.error("Not sending RTP " + _ptype + "ex = " + ex.getMessage());
             throw ex;
         }
 
@@ -235,7 +241,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         long stamp = 0;
         int sync = 0;
 
-        Log.verb("got packet " +plen);
+        Log.verb("got packet " + plen);
 
         if (plen < 12) {
             throw new RTPPacketException("Packet too short. RTP must be >12 bytes");
@@ -243,12 +249,12 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         ver = copyBits(packet, 0, 2);
         pad = copyBits(packet, 2, 1);
         csrcn = copyBits(packet, 4, 4);
-        mark = copyBits(packet,8,1);
+        mark = copyBits(packet, 8, 1);
         ptype = copyBits(packet, 9, 7);
         ByteBuffer pb = ByteBuffer.wrap(packet);
 
         seqno = pb.getChar(2);
-        stamp = getUnsignedInt(pb,4);
+        stamp = getUnsignedInt(pb, 4);
         sync = pb.getInt(8);
         if (plen < (RTPHEAD + 4 * csrcn)) {
             throw new RTPPacketException("Packet too short. CSRN =" + csrcn + " but packet only " + plen);
@@ -296,9 +302,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
             throw rpx;
         }
-        deliverPayload(payload, stamp, sync, seqno,mark);
+        deliverPayload(payload, stamp, sync, seqno, mark);
 
-        Log.verb("got RTP " + ptype + " packet " + payload.length );
+        Log.verb("got RTP " + ptype + " packet " + payload.length);
 
     }
 
@@ -341,7 +347,8 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             _rtpds.dataPacketReceived(payload, stamp, getIndex(seqno));
         }
     }
-
+    void appendAuth(byte[] payload, char seqno) throws RTPPacketException {
+    }
     void appendAuth(byte[] payload) throws RTPPacketException {
         // nothing to do in rtp
     }
@@ -368,15 +375,15 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             throw new RTPPacketException("Sync changed: was " + _sync + " now " + sync);
         }
     }
-    
-    public static long getUnsignedInt(ByteBuffer bb,int loc) {
+
+    public static long getUnsignedInt(ByteBuffer bb, int loc) {
         return ((long) bb.getInt(loc) & 0xffffffffL);
     }
 
     public static void putUnsignedInt(ByteBuffer bb, long value, int loc) {
-        bb.putInt(loc,(int) (value & 0xffffffffL));
+        bb.putInt(loc, (int) (value & 0xffffffffL));
     }
-    
+
     public void startrecv() {
         _listen.start();
     }
@@ -478,7 +485,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     }
 
     protected void deliverPayload(byte[] payload, long stamp, int sync, char seqno, int mark) {
-        deliverPayload(payload,stamp,sync,seqno);
+        deliverPayload(payload, stamp, sync, seqno);
     }
 
     protected static class RTPPacketException extends IOException {
@@ -486,5 +493,58 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         RTPPacketException(String mess) {
             super(mess);
         }
+    }
+
+    public static void main(String[] args) {
+        // loop back test
+        byte data[] = new byte[1209];
+        SecureRandom sr = new SecureRandom();
+        sr.nextBytes(data);
+        long stamp = 0;
+        int id;
+        int type;
+        final DatagramPacket[] dsa = new DatagramPacket[1];
+        final long gstamp[] = new long[1];
+        final long gindex[] = new long[1];
+        try {
+            DatagramSocket ds = new DatagramSocket() {
+                @Override
+                public void send(DatagramPacket dp) throws IOException {
+                    dsa[0] = dp;
+                }
+            };
+            id = sr.nextInt(Character.MAX_VALUE);
+            type = sr.nextInt(Byte.MAX_VALUE);
+            RTPProtocolImpl target = new RTPProtocolImpl(id, ds, null, type);
+            RTPDataSink rtpds = new RTPDataSink() {
+                @Override
+                public void dataPacketReceived(byte[] data, long stamp, long index) {
+                    gstamp[0] = stamp;
+                    gindex[0] = index;
+                }
+            };
+            target.setRTPDataSink(rtpds);
+            while (stamp < 0x200000000L) {
+                target.sendPacket(data, stamp, type);
+                target.parsePacket(dsa[0]);
+                if (gstamp[0] != stamp) {
+                    throw new java.lang.ArithmeticException("Stamp is wrong " + gstamp[0] + " != " + stamp);
+                }
+                long xindex = stamp;
+                if (gindex[0] != xindex) {
+                    throw new java.lang.ArithmeticException("Index is wrong " + gindex[0] + " != " + xindex);
+                }
+                if ((stamp % 0x1000000) == 0) {
+                    System.out.println("did " + stamp + " tests");
+                }
+                stamp++;
+            }
+        } catch (Exception x) {
+            System.out.println("exception " + x.getLocalizedMessage());
+
+            x.printStackTrace();
+        }
+        System.out.println("did " + stamp + " tests");
+
     }
 }
