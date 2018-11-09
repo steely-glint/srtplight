@@ -39,7 +39,7 @@ public class SRTCPProtocolImpl {
     private int _tailIn;
     private int _tailOut;
     private DatagramSocket outDs;
-    private int index;
+    private int out_index;
 
     public SRTCPProtocolImpl(Properties l, Properties r) {
         init(l, r);
@@ -86,10 +86,11 @@ public class SRTCPProtocolImpl {
         rtcp.addBody(bbo);
         Log.debug("RTCP built " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
-        encrypt(bbo, index, (int) rtcp.ssrc);
+        
+        encrypt(bbo, out_index, (int) rtcp.ssrc);
         Log.debug("RTCP encrypted " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
-        bbo.putInt((1 << 31) | (0x7fffffff & index));
+        bbo.putInt((1 << 31) | (0x7fffffff & out_index));
         Log.debug("RTCP added index " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
         appendAuth(bbo);
@@ -100,13 +101,9 @@ public class SRTCPProtocolImpl {
         DatagramPacket p = new DatagramPacket(out, 0, out.length);
         if (outDs != null) {
             this.outDs.send(p);
+            out_index++;
         } else {
             Log.debug("RTCP Dummy. Wanted to send this " + getHex(p.getData()));
-            try {
-                inbound(p);
-            } catch (InvalidRTCPPacketException ex) {
-                Log.error("Can't parse RTCP packet");
-            }
         }
         Log.debug("RTCP sent " + rtcp);
 
@@ -333,7 +330,7 @@ public class SRTCPProtocolImpl {
             Log.debug("After  Auth: "+getHex(va.array()));
 
             Log.debug("----------> fake outbound packet");
-            testMe.index = 0x777777;
+            testMe.out_index = 0x777777;
             testMe.sendSR(0x53535353, 1500, 0, 1, 1408);
             testMe.sendRR();
 
