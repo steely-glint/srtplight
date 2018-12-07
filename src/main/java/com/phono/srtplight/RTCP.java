@@ -34,7 +34,6 @@ public class RTCP {
     final static int RTPFB = 205;
     final static int PSFB = 206;
 
-
     protected char pt;
     protected long ssrc;
 
@@ -168,33 +167,35 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         sro.setSenderPackets(0);
         sro.setSenderOctets(0);
         int ebl = sro.estimateBodyLength();
-        ByteBuffer bbo = ByteBuffer.allocate(4*(ebl+1));
+        ByteBuffer bbo = ByteBuffer.allocate(4 * (ebl + 1));
         sro.addBody(bbo);
-        byte [] pky = bbo.array();
-        Log.debug("sro "+sro);
-        Log.debug("sro "+getHex(pky));
-        for (int i=0;i<sr.length;i++){
-            if (pky[i]!= sr[i]){
-                Log.error("packets differ at:"+i);
+        byte[] pky = bbo.array();
+        Log.debug("sro " + sro);
+        Log.debug("sro " + getHex(pky));
+        for (int i = 0; i < sr.length; i++) {
+            if (pky[i] != sr[i]) {
+                Log.error("packets differ at:" + i);
             }
         }
         ReceiverReport rro = mkReceiverReport();
         ebl = sro.estimateBodyLength();
-        bbo = ByteBuffer.allocate(4*(ebl+1));
+        bbo = ByteBuffer.allocate(4 * (ebl + 1));
         rro.addBody(bbo);
         pky = bbo.array();
-        Log.debug("rro "+rro);
-        Log.debug("rro "+getHex(pky));
+        Log.debug("rro " + rro);
+        Log.debug("rro " + getHex(pky));
     }
 
     public static SenderReport mkSenderReport() {
         SenderReport ret = new SenderReport();
         return ret;
     }
+
     static ReceiverReport mkReceiverReport() {
         ReceiverReport ret = new ReceiverReport();
         return ret;
     }
+
     int estimateBodyLength() { // this is int 32s -1
         return 1;
     }
@@ -305,7 +306,7 @@ info   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     }
 
-    static class ReceiverReport extends RTCP {
+    public static class ReceiverReport extends RTCP {
 
         /*
                 0                   1                   2                   3
@@ -353,6 +354,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 reports.add(rblock);
             }
         }
+
         @Override
         public void addBody(ByteBuffer bb) {
             super.addBody(bb);
@@ -367,11 +369,16 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         int estimateBodyLength() {
             return 6 + (6 * reports.size());
         }
+
         private ReceiverReport() {
             reports = new ArrayList();
             pt = RR;
         }
 
+        public ReportBlock[] getReports(){
+            return (ReportBlock[]) reports.toArray();
+        } 
+        
         public String toString() {
             String ret = "RTCP RR: ssrc=" + ssrc;
             for (ReportBlock b : reports) {
@@ -384,19 +391,19 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     public RTCP() {
     }
 
-    private static class SDES extends RTCP {
+    public static class SDES extends RTCP {
 
         public SDES(ByteBuffer bb, int rc, int length) {
         }
     }
 
-    private static class BYE extends RTCP {
+    public static class BYE extends RTCP {
 
         public BYE(ByteBuffer bb, int rc, int length) {
         }
     }
 
-    private static class FB extends RTCP {
+    public static class FB extends RTCP {
 
         long sssrc;
         long mssrc;
@@ -429,13 +436,29 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             bb.get(fci);
         }
 
+        public long getSssrc() {
+            return sssrc;
+        }
+
+        public long getMssrc() {
+            return mssrc;
+        }
+
+        public int getFmt() {
+            return fmt;
+        }
+
+        public byte[] getFci() {
+            return fci;
+        }
+
         public String toString() {
             String ret = "RTCP FB: sssrc=" + sssrc + " mssrc=" + mssrc + " fmt=" + fmt + " fci length=" + fci.length;
             return ret;
         }
     }
 
-    private static class PSFB extends FB {
+    public static class PSFB extends FB {
 
         public PSFB(ByteBuffer bb, int rc, int length) throws InvalidRTCPPacketException {
             super(bb, rc, length);
@@ -447,7 +470,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         }
     }
 
-    class ReportBlock {
+    public class ReportBlock {
 
         /*
        +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
@@ -482,6 +505,34 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             iaJitter = bb.getInt();
             lsr = bb.getInt();
             dlsr = bb.getInt();
+        }
+
+        public long getSsrc() {
+            return ssrc;
+        }
+
+        public int getFrac() {
+            return frac;
+        }
+
+        public int getCumulost() {
+            return cumulost;
+        }
+
+        public long getHighestSeqRcvd() {
+            return highestSeqRcvd;
+        }
+
+        public long getIaJitter() {
+            return iaJitter;
+        }
+
+        public long getLsr() {
+            return lsr;
+        }
+
+        public long getDlsr() {
+            return dlsr;
         }
 
         public String toString() {
