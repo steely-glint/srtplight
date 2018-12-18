@@ -376,7 +376,11 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         }
 
         public ReportBlock[] getReports(){
-            return (ReportBlock[]) reports.toArray();
+            ReportBlock[] ret = new ReportBlock[reports.size()];
+            for (int i=0;i<reports.size();i++){
+                ret[i] =  reports.get(i);
+            }
+            return ret;
         } 
         
         public String toString() {

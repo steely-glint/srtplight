@@ -201,7 +201,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                     : new DatagramPacket(payload, payload.length, _far);
             _ds.send(p);
 
-            Log.verb("sending RTP " + _ptype + " packet length " + payload.length);
+            Log.verb("sending RTP " + _ptype + " packet length " + payload.length+ "seq ="+(int)seqno+" csrc="+_csrcid+" stamp="+stamp);
         } catch (IOException ex) {
             _lastx = ex;
             Log.error("Not sending RTP " + _ptype + "ex = " + ex.getMessage());
