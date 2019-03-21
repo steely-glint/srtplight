@@ -24,6 +24,8 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.crypto.Mac;
 
 /**
@@ -80,8 +82,8 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     /*
     The format of an SRTP packet is illustrated in Figure 1.
 
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<+
     |V=2|P|X|  CC   |M|     PT      |       sequence number         | |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
@@ -93,17 +95,17 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     |                               ....                            | |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
     |                   RTP extension (OPTIONAL)                    | |
-    +>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
-    | |                          payload  ...                         | |
-    | |                               +-------------------------------+ |
-    | |                               | RTP padding   | RTP pad count | |
-    +>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<+
-    | ~                     SRTP MKI (OPTIONAL)                       ~ |
-    | +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
-    | :                 authentication tag (RECOMMENDED)              : |
-    | +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
-    |                                                                   |
-    +- Encrypted Portion*                      Authenticated Portion ---+
+  +>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  | |                          payload  ...                         | |
+  | |                               +-------------------------------+ |
+  | |                               | RTP padding   | RTP pad count | |
+  +>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<+
+  | ~                     SRTP MKI (OPTIONAL)                       ~ |
+  | +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  | :                 authentication tag (RECOMMENDED)              : |
+  | +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |                                                                   |
+  +- Encrypted Portion*                      Authenticated Portion ---+
 
      *
      */
@@ -294,6 +296,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     Character oseq = null;
     int roc = 0;
     static final int wrapdiff = 2 << 14;
+
     @Override
     /* 
     variant that sets seqno itself rather than incrementing it .
@@ -324,16 +327,18 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
         long low = (long) seqno;
         long high = ((long) n << 16);
         _seqno = low | high;
-        try {
-            if (_doCrypt) {
+
+        if (_doCrypt) {
+            try {
                 _scOut.deriveKeys(stamp);
                 encrypt(data, (int) _csrcid, _seqno);
+                super.sendPacket(data, stamp, seqno, ptype, marker);
+            } catch (GeneralSecurityException ex) {
+                Log.error("problem encrypting packet" + ex.getMessage());
+                ex.printStackTrace();
             }
-            super.sendPacket(data, stamp, seqno, ptype, marker);
-        } catch (Exception ex) {
-            Log.error("problem encrypting packet" + ex.getMessage());
-            ex.printStackTrace();
         }
+
     }
 
     @Override
@@ -345,7 +350,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
                 encrypt(data, (int) _csrcid, _seqno);
             }
             super.sendPacket(data, stamp, ptype, marker);
-        } catch (Exception ex) {
+        } catch (GeneralSecurityException ex) {
             Log.error("problem encrypting packet" + ex.getMessage());
             ex.printStackTrace();
         }
