@@ -9,3 +9,4 @@
  ## It was originally written for Voxeo's Phono project as part of an applet based in-browser phone.
  - issues,PRs,fixes etc are welcome
  - Apache license.
+ - now used in |pipe| (see github.com/pipe/)
