@@ -5,13 +5,16 @@
  */
 package com.phono.srtplight;
 
+import java.io.IOException;
+
 /**
  *
  * @author thp
  */
-public class InvalidRTCPPacketException extends Exception {
-
-    public InvalidRTCPPacketException(String message) {
+public class RTPPacketException extends IOException {
+    
+    public RTPPacketException(String mess) {
+        super(mess);
     }
     
 }

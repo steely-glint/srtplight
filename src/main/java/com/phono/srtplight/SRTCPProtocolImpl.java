@@ -143,7 +143,7 @@ public class SRTCPProtocolImpl {
    +-- Encrypted Portion                    Authenticated Portion -----+
     
      */
-    void checkAuth(byte[] packet, int plen) throws RTPProtocolImpl.RTPPacketException {
+    void checkAuth(byte[] packet, int plen) throws RTPPacketException {
         if (Log.getLevel() > Log.DEBUG) {
             Log.verb("auth on packet " + getHex(packet, plen));
         }
@@ -178,14 +178,14 @@ public class SRTCPProtocolImpl {
 
                 for (int i = 0; i < alen; i++) {
                     if (auth[i] != mac[i]) {
-                        throw new RTPProtocolImpl.RTPPacketException("not authorized byte " + i + " does not match ");
+                        throw new RTPPacketException("not authorized byte " + i + " does not match ");
                     }
                 }
                 Log.debug("RTCP auth ok");
             }
         } catch (GeneralSecurityException ex) {
             Log.debug("RTCP auth check failed " + ex.getMessage());
-            throw new RTPProtocolImpl.RTPPacketException("Problem checking  packet " + ex.getMessage());
+            throw new RTPPacketException("Problem checking  packet " + ex.getMessage());
 
         }
     }
@@ -194,7 +194,7 @@ public class SRTCPProtocolImpl {
      * calculate the outbound auth and put it at the end of the packet starting
      * at length - _tail space is already allocated
      */
-    void appendAuth(ByteBuffer m) throws RTPProtocolImpl.RTPPacketException, GeneralSecurityException {
+    void appendAuth(ByteBuffer m) throws RTPPacketException, GeneralSecurityException {
 
         // strictly we might need to derive the keys here too -
         // since we might be doing auth but no crypt.
@@ -215,7 +215,7 @@ public class SRTCPProtocolImpl {
         }
     }
 
-    public RTCP[] inbound(DatagramPacket pkt) throws GeneralSecurityException, InvalidRTCPPacketException {
+    public RTCP[] inbound(DatagramPacket pkt) throws  InvalidRTCPPacketException, RTPPacketException, GeneralSecurityException {
         ArrayList<RTCP> rtcps = new ArrayList();
         int len = pkt.getLength();
         byte[] data = new byte[len];
@@ -256,14 +256,8 @@ public class SRTCPProtocolImpl {
 
         if (encryption) {
             _scIn.deriveKeys(index); // or perhaps zero ?
-            try {
-                this.checkAuth(data, len);
-            } catch (RTPProtocolImpl.RTPPacketException ex) {
-                if (Log.getLevel()>=Log.DEBUG){
-                    ex.printStackTrace();
-                }
-                throw new GeneralSecurityException("Can't check auth...");
-            }
+            this.checkAuth(data, len);
+             
             bb.position(0);
             decrypt(bb, len, tail_len, ssrc, index);
             bb.position(0);

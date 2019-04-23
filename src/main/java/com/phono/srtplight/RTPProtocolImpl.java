@@ -25,6 +25,8 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
@@ -107,22 +109,27 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     }
 
     protected void irun() {
-        byte[] data = new byte[1500];
+        byte[] data = new byte[1490];
         DatagramPacket dp = new DatagramPacket(data, data.length);
         Log.debug("Max Datagram size " + data.length);
         Log.debug("address is  " + _ds.getLocalSocketAddress().toString());
-
+        long count = 0;
         while (_listen != null) {
             try {
                 Log.verb("rtp loop");
                 _ds.receive(dp);
                 parsePacket(dp);
+                count++;
                 if (_realloc) {
                     dp = new DatagramPacket(data, data.length);
                 }
-            } catch (Exception x) {
-                Log.debug(this.getClass().getSimpleName() + " " + x.toString());
-                _lastx = x;
+            } catch (java.net.SocketTimeoutException x) {
+                if (count >0){
+                    Log.debug("Timeout waiting for packet");
+                }
+            } catch (IOException ex) {
+                Log.debug(this.getClass().getSimpleName() + " " + ex.toString());
+                _lastx = ex;
             }
         }
         if (!_ds.isClosed()) {
@@ -488,12 +495,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         deliverPayload(payload, stamp, sync, seqno);
     }
 
-    protected static class RTPPacketException extends IOException {
-
-        RTPPacketException(String mess) {
-            super(mess);
-        }
-    }
 
     public static void main(String[] args) {
         // loop back test
