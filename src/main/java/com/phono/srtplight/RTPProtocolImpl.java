@@ -25,8 +25,6 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
 
@@ -77,7 +75,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 } // if we are talking to loopback we dont need the extra 
                 // security of connecting.
             }
-
             _ds.setSoTimeout(100);
         } catch (SocketException ex) {
             Log.warn("Problem with datagram socket:" + ex.getMessage());
@@ -121,6 +118,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 parsePacket(dp);
                 count++;
                 if (_realloc) {
+                    data = new byte[1490];
                     dp = new DatagramPacket(data, data.length);
                 }
             } catch (java.net.SocketTimeoutException x) {
@@ -247,6 +245,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         char seqno = 0;
         long stamp = 0;
         int sync = 0;
+        int x =0;
 
         Log.verb("got packet " + plen);
 
@@ -255,6 +254,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         }
         ver = copyBits(packet, 0, 2);
         pad = copyBits(packet, 2, 1);
+        x = copyBits(packet, 3, 1);
         csrcn = copyBits(packet, 4, 4);
         mark = copyBits(packet, 8, 1);
         ptype = copyBits(packet, 9, 7);
@@ -273,6 +273,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             csrc[i] = getUnsignedInt(pb, offs);
             offs += 4;
         }
+        if (x > 0){
+            Log.error("Help! an extension! ");
+        } 
         int endhead = offs;
         // if padding set then last byte tells you how much to skip
         int paylen = (pad == 0) ? (plen - offs) : ((plen - offs) - (0xff) & packet[plen - 1]);
