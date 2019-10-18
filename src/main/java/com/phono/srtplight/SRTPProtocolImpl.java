@@ -296,6 +296,19 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     Character oseq = null;
     int roc = 0;
     static final int wrapdiff = 2 << 14;
+/**
+ * warning assumes payload is correctly encrypted - which is specious 
+ * @param data
+ * @param stamp
+ * @param seqno
+ * @param ptype
+ * @param marker
+ * @throws SocketException
+ * @throws IOException 
+ */
+    public void reSendEncryptedPacket(byte[] data, long stamp, char seqno, int ptype, boolean marker) throws SocketException, IOException {
+        super.sendPacket(data, stamp, seqno, ptype, marker);
+    }
 
     @Override
     /* 

@@ -20,6 +20,7 @@ import static com.phono.srtplight.SRTPProtocolImpl.getHex;
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -116,7 +117,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 ret = new BYE(bb, rc, length);
                 break;
             case RTPFB:
-                ret = new FB(bb, rc, length);
+                ret = new RTPFB(bb, rc, length);
                 break;
             case PSFB:
                 ret = new PSFB(bb, rc, length);
@@ -473,7 +474,30 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             return ret;
         }
     }
+    public static class RTPFB extends FB {
+        
+        public RTPFB(ByteBuffer bb, int rc, int length) throws InvalidRTCPPacketException {
+            super(bb, rc, length);
+        }
 
+        public String toString() {
+            String ret = "RTCP RTPFB: sssrc=" + sssrc + " mssrc=" + mssrc + " fmt=" + fmt + " fci length=" + fci.length;
+            return ret;
+        }
+        public List<Long> getSeqList(){
+            ArrayList<Long> ret = new ArrayList();
+            ByteBuffer bb = ByteBuffer.wrap(fci);
+            long lost = (long) bb.getChar();
+            ret.add(lost);
+            for (int i=0;i<16;i++){
+                int bit = BitUtils.getBit(fci, i+16);
+                if (bit != 0){
+                    ret.add(lost+i);
+                }
+            }
+            return ret;
+        }
+    }
     public class ReportBlock {
 
         /*
