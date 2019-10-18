@@ -296,18 +296,42 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
     Character oseq = null;
     int roc = 0;
     static final int wrapdiff = 2 << 14;
+
+    /**
+     * warning assumes payload is correctly encrypted - which is specious
+     *
+     * @param data
+     * @param stamp
+     * @param seqno
+     * @param ptype
+     * @param marker
+     * @throws SocketException
+     * @throws IOException
+     */
+    public void reSendEncryptedPacket(byte[] data, long stamp, long seqno, int ptype, boolean marker) throws SocketException, IOException {
+        super.sendPacket(data, stamp, (char)seqno, ptype, marker);
+    }
 /**
- * warning assumes payload is correctly encrypted - which is specious 
+ * do this without changing _any_ state.
  * @param data
  * @param stamp
- * @param seqno
+ * @param seq
  * @param ptype
  * @param marker
  * @throws SocketException
  * @throws IOException 
  */
-    public void reSendEncryptedPacket(byte[] data, long stamp, char seqno, int ptype, boolean marker) throws SocketException, IOException {
-        super.sendPacket(data, stamp, seqno, ptype, marker);
+    public void reSendUnEncryptedPacket(byte[] data, long stamp, long seq, int ptype, boolean marker) throws SocketException, IOException {
+        if (_doCrypt) {
+            try {
+                _scOut.deriveKeys(seq);
+                encrypt(data, (int) _csrcid, seq);
+                super.sendPacket(data, stamp, (char) seq, ptype, marker);
+            } catch (GeneralSecurityException ex) {
+                Log.error("problem encrypting packet" + ex.getMessage());
+                ex.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -343,9 +367,9 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
         if (_doCrypt) {
             try {
-                _scOut.deriveKeys(stamp);
+                _scOut.deriveKeys(_seqno);
                 encrypt(data, (int) _csrcid, _seqno);
-                super.sendPacket(data, stamp, seqno, ptype, marker);
+                super.sendPacket(data, stamp, (char) _seqno, ptype, marker);
             } catch (GeneralSecurityException ex) {
                 Log.error("problem encrypting packet" + ex.getMessage());
                 ex.printStackTrace();
