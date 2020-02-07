@@ -69,14 +69,14 @@ public class SRTCPProtocolImpl {
         sr.setSSRC(ssrc);
         sr.setSenderOctets(octs);
         sr.setSenderPackets(pkts);
-        Log.debug("RTCP about to build " + sr);
+        Log.verb("RTCP about to build " + sr);
         outbound(sr);
     }
 
     public void sendRR() throws IOException, GeneralSecurityException {
         RTCP.ReceiverReport rr = RTCP.mkReceiverReport();
         rr.setSSRC(1L);
-        Log.debug("RTCP about to build " + rr);
+        Log.verb("RTCP about to build " + rr);
         outbound(rr);
     }
     private void outbound(RTCP rtcp) throws IOException, GeneralSecurityException {
@@ -84,17 +84,17 @@ public class SRTCPProtocolImpl {
         int fpl = 4 * (ebl + 1) + 4 + this._tailOut;
         ByteBuffer bbo = ByteBuffer.allocate(fpl);
         rtcp.addBody(bbo);
-        Log.debug("RTCP built " + rtcp);
+        Log.verb("RTCP built " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
         
         encrypt(bbo, out_index, (int) rtcp.ssrc);
-        Log.debug("RTCP encrypted " + rtcp);
+        Log.verb("RTCP encrypted " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
         bbo.putInt((1 << 31) | (0x7fffffff & out_index));
-        Log.debug("RTCP added index " + rtcp);
+        Log.verb("RTCP added index " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
         appendAuth(bbo);
-        Log.debug("RTCP authed " + rtcp);
+        Log.verb("RTCP authed " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
 
         byte[] out = bbo.array();
@@ -103,9 +103,9 @@ public class SRTCPProtocolImpl {
             this.outDs.send(p);
             out_index++;
         } else {
-            Log.debug("RTCP Dummy. Wanted to send this " + getHex(p.getData()));
+            Log.verb("RTCP Dummy. Wanted to send this " + getHex(p.getData()));
         }
-        Log.debug("RTCP sent " + rtcp);
+        Log.verb("RTCP sent " + rtcp);
 
     }
 
@@ -181,7 +181,7 @@ public class SRTCPProtocolImpl {
                         throw new RTPPacketException("not authorized byte " + i + " does not match ");
                     }
                 }
-                Log.debug("RTCP auth ok");
+                Log.verb("RTCP auth ok");
             }
         } catch (GeneralSecurityException ex) {
             Log.debug("RTCP auth check failed " + ex.getMessage());
@@ -220,7 +220,7 @@ public class SRTCPProtocolImpl {
         int len = pkt.getLength();
         byte[] data = new byte[len];
         System.arraycopy(pkt.getData(), 0, data, 0, len);
-        Log.debug("RTCP packet " + SRTPProtocolImpl.getHex(data));
+        Log.verb("RTCP packet " + SRTPProtocolImpl.getHex(data));
         ByteBuffer bb = ByteBuffer.wrap(data);
         char fh = bb.getChar();
         int v = (fh & ((char) (0xc000))) >>> 14;
@@ -251,7 +251,7 @@ public class SRTCPProtocolImpl {
             bb.get(mikey);
         }
         bb.get(authtag);
-        Log.debug("Tail =" + tail_len + " index=" + index + " mkti=" + getHex(mikey) + " authtag=" + getHex(authtag) + " encryption=" + encryption);
+        Log.verb("Tail =" + tail_len + " index=" + index + " mkti=" + getHex(mikey) + " authtag=" + getHex(authtag) + " encryption=" + encryption);
         bb.position(0);
 
         if (encryption) {
@@ -262,9 +262,9 @@ public class SRTCPProtocolImpl {
             decrypt(bb, len, tail_len, ssrc, index);
             bb.position(0);
             while (bb.remaining() >= CLEARHEAD + tail_len) {
-                Log.debug("RTCP packet starts at " + bb.position());
+                Log.verb("RTCP packet starts at " + bb.position());
                 RTCP rtcp = RTCP.mkRTCP(bb);
-                Log.debug("RTCP packet was: " + rtcp.toString());
+                Log.verb("RTCP packet was: " + rtcp.toString());
                 rtcps.add(rtcp);
             }
         }
