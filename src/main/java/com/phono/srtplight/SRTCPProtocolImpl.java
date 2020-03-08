@@ -96,19 +96,19 @@ public class SRTCPProtocolImpl {
         appendAuth(bbo);
         Log.debug("RTCP authed " + rtcp);
         Log.verb("packet body "+getHex(bbo.array()));
-
         byte[] out = bbo.array();
-        DatagramPacket p = new DatagramPacket(out, 0, out.length);
+        sendToNetwork(out);
+        Log.debug("RTCP sent " + rtcp);
+        out_index++;
+    }
+    protected void sendToNetwork(byte[] pay) throws IOException{
+        DatagramPacket p = new DatagramPacket(pay, 0, pay.length);
         if (outDs != null) {
             this.outDs.send(p);
-            out_index++;
         } else {
             Log.debug("RTCP Dummy. Wanted to send this " + getHex(p.getData()));
         }
-        Log.debug("RTCP sent " + rtcp);
-
     }
-
     /*
           0                   1                   2                   3
       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1

@@ -39,7 +39,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     protected long _roc = 0; // only used for inbound we _know_ the answer for outbound.
     protected char _s_l;// only used for inbound we _know_ the answer for outbound.
 
-    
     /* networky stuff bidriectional*/
     DatagramSocket _ds;
     SocketAddress _far;
@@ -122,7 +121,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                     dp = new DatagramPacket(data, data.length);
                 }
             } catch (java.net.SocketTimeoutException x) {
-                if (count >0){
+                if (count > 0) {
                     Log.debug("Timeout waiting for packet");
                 }
             } catch (IOException ex) {
@@ -167,7 +166,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     }
 
     public void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws IOException {
-        sendPacket(data, stamp, (char)_seqno, ptype, marker);
+        sendPacket(data, stamp, (char) _seqno, ptype, marker);
         _seqno++;
     }
 
@@ -202,17 +201,21 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 payload[i + RTPHEAD] = data[i];
             }
             appendAuth(payload);
-            DatagramPacket p = (_far == null) ? new DatagramPacket(payload, payload.length)
-                    : new DatagramPacket(payload, payload.length, _far);
-            _ds.send(p);
+            sendToNetwork(payload);
 
-            Log.verb("sending RTP " + _ptype + " packet length " + payload.length+ "seq ="+(int)seqno+" csrc="+_csrcid+" stamp="+stamp);
+            Log.verb("sending RTP " + _ptype + " packet length " + payload.length + "seq =" + (int) seqno + " csrc=" + _csrcid + " stamp=" + stamp);
         } catch (IOException ex) {
             _lastx = ex;
             Log.error("Not sending RTP " + _ptype + "ex = " + ex.getMessage());
             throw ex;
         }
 
+    }
+
+    protected void sendToNetwork(byte[] payload) throws IOException {
+        DatagramPacket p = (_far == null) ? new DatagramPacket(payload, payload.length)
+                : new DatagramPacket(payload, payload.length, _far);
+        _ds.send(p);
     }
 
     protected void parsePacket(DatagramPacket dp) throws IOException {
@@ -245,7 +248,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         char seqno = 0;
         long stamp = 0;
         int sync = 0;
-        int x =0;
+        int x = 0;
 
         Log.verb("got packet " + plen);
 
@@ -273,9 +276,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             csrc[i] = getUnsignedInt(pb, offs);
             offs += 4;
         }
-        if (x > 0){
+        if (x > 0) {
             Log.error("Help! an extension! ");
-        } 
+        }
         int endhead = offs;
         // if padding set then last byte tells you how much to skip
         int paylen = (pad == 0) ? (plen - offs) : ((plen - offs) - (0xff) & packet[plen - 1]);
@@ -357,8 +360,10 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             _rtpds.dataPacketReceived(payload, stamp, getIndex(seqno));
         }
     }
+
     void appendAuth(byte[] payload, char seqno) throws RTPPacketException {
     }
+
     void appendAuth(byte[] payload) throws RTPPacketException {
         // nothing to do in rtp
     }
@@ -497,7 +502,6 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     protected void deliverPayload(byte[] payload, long stamp, int sync, char seqno, int mark) {
         deliverPayload(payload, stamp, sync, seqno);
     }
-
 
     public static void main(String[] args) {
         // loop back test
