@@ -98,7 +98,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         int rc = (fh & ((char) (0x1f00))) >>> 8;
         int lpt = (char) (fh & ((char) (0x00ff)));
         int length = bb.getChar();
-        Log.debug("Have RTCP pkt with v=" + v + " p=" + p + " rc=" + rc + " pt=" + lpt + " lenght=" + length);
+        Log.verb("Have RTCP pkt with v=" + v + " p=" + p + " rc=" + rc + " pt=" + lpt + " lenght=" + length);
         if (v != 2) {
             throw new InvalidRTCPPacketException("version must be 2");
         }
@@ -152,7 +152,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             try {
                 RTCP r = mkRTCP(p);
                 if (r != null) {
-                    Log.debug(r.toString());
+                    Log.verb(r.toString());
                 } else {
                     Log.error("r is null");
                 }
@@ -171,8 +171,8 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         ByteBuffer bbo = ByteBuffer.allocate(4 * (ebl + 1));
         sro.addBody(bbo);
         byte[] pky = bbo.array();
-        Log.debug("sro " + sro);
-        Log.debug("sro " + getHex(pky));
+        Log.verb("sro " + sro);
+        Log.verb("sro " + getHex(pky));
         for (int i = 0; i < sr.length; i++) {
             if (pky[i] != sr[i]) {
                 Log.error("packets differ at:" + i);
@@ -183,8 +183,8 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         bbo = ByteBuffer.allocate(4 * (ebl + 1));
         rro.addBody(bbo);
         pky = bbo.array();
-        Log.debug("rro " + rro);
-        Log.debug("rro " + getHex(pky));
+        Log.verb("rro " + rro);
+        Log.verb("rro " + getHex(pky));
     }
 
     public static SenderReport mkSenderReport() {
@@ -342,7 +342,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
         public ReceiverReport(ByteBuffer bb, int rc, int length) throws InvalidRTCPPacketException {
             int expected = 1 + (6 * rc);
-            Log.debug("length expected=" + expected + " got length=" + length + " rc = " + rc);
+            Log.verb("length expected=" + expected + " got length=" + length + " rc = " + rc);
 
             if (length != expected) {
                 throw new InvalidRTCPPacketException("length mismatch expected=" + expected + " got length=" + length);
