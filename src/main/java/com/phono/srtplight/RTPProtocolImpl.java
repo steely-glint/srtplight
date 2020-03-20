@@ -67,27 +67,34 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         _session = "RTPSession" + id;
         _seqno = 0;
         _csrcid = _rand.nextInt();
-        try {
-            if (_far != null) {
-                if (!far.getAddress().isLoopbackAddress()) {
-                    _ds.connect(_far);
-                } // if we are talking to loopback we dont need the extra 
-                // security of connecting.
+        if (_ds != null) {
+            try {
+                if (_far != null) {
+                    if (!far.getAddress().isLoopbackAddress()) {
+                        _ds.connect(_far);
+                    } // if we are talking to loopback we dont need the extra 
+                    // security of connecting.
+                }
+                _ds.setSoTimeout(100);
+            } catch (SocketException ex) {
+                Log.warn("Problem with datagram socket:" + ex.getMessage());
             }
-            _ds.setSoTimeout(100);
-        } catch (SocketException ex) {
-            Log.warn("Problem with datagram socket:" + ex.getMessage());
+        } else {
+            Log.info("RTPProtocolImpl with no datagram socket");
         }
 
-        // I like to hide the run method, otherwise it is public
-        Runnable ir = new Runnable() {
+        if (_ds != null) {
+            // I like to hide the run method, otherwise it is public
+            Runnable ir = new Runnable() {
 
-            public void run() {
-                irun();
-            }
-        };
-        _listen = new Thread(ir);
-        _listen.setName(_session);
+                public void run() {
+                    irun();
+                }
+
+            };
+            _listen = new Thread(ir);
+            _listen.setName(_session);
+        }
         _first = true;
         Log.debug("RTP session " + this.getClass().getSimpleName() + _session);
     }
