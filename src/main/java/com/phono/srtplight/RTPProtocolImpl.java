@@ -80,7 +80,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
                 Log.warn("Problem with datagram socket:" + ex.getMessage());
             }
         } else {
-            Log.info("RTPProtocolImpl with no datagram socket");
+            Log.verb("RTPProtocolImpl with no datagram socket");
         }
 
         if (_ds != null) {
