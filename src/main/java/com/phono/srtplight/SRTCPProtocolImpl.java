@@ -4,7 +4,6 @@ import static com.phono.srtplight.SRTPProtocolImpl.getHex;
 import static com.phono.srtplight.SRTPProtocolImpl.getPepper;
 import static com.phono.srtplight.SRTPSecContext.saba;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,8 +11,6 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.crypto.Mac;
 
 /**

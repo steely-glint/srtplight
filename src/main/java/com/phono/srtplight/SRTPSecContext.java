@@ -397,7 +397,7 @@ public class SRTPSecContext {
                     }
                 }
             }
-            Log.debug(_dirn + "key n salt =" + ks);
+            //Log.debug(_dirn + "key n salt =" + ks);
             byte mks[] = Base64Coder.decode(ks);
             if (mks.length != 30) {
                 throw new GeneralSecurityException("Master ket/salt too short - expecting 30 got" + mks.length);

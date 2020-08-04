@@ -17,7 +17,6 @@
 package com.phono.srtplight;
 
 import static com.phono.srtplight.SRTPProtocolImpl.getHex;
-import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
