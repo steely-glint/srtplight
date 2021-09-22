@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -164,7 +165,7 @@ public class SRTCPProtocolImpl {
                 if (Log.getLevel() > Log.DEBUG) {
                     Log.verb("auth body " + getHex(m.array()));
                 }
-                m.position(0);
+                ((Buffer)m).position(0);
                 hmac.update(m);
                 byte[] mac = hmac.doFinal();
 
@@ -199,16 +200,17 @@ public class SRTCPProtocolImpl {
         // since we might be doing auth but no crypt.
         // we don't support that so nach.
         Mac mac = _scOut.getAuthMac();
-        int top = m.limit();
-        m.position(0);
+        Buffer bm = (Buffer) m;
+        int top = bm.limit();
+        bm.position(0);
         int authLoc = top - _tailOut;
-        m.limit(authLoc);
+        bm.limit(authLoc);
         mac.update(m);
         byte[] auth = mac.doFinal();
-        m.limit(top);
-        m.position(authLoc);
+        bm.limit(top);
+        bm.position(authLoc);
         m.put(auth,0,_tailOut);
-        m.position(0);
+        bm.position(0);
         if (Log.getLevel() > Log.DEBUG) {
             Log.verb("Authed packet " + getHex(m.array()));
         }
@@ -242,7 +244,8 @@ public class SRTCPProtocolImpl {
         int tail_offset = len - tail_len;
         byte[] authtag = new byte[AUTHLEN];
         byte[] mikey = new byte[MIKEY];
-        bb.position(tail_offset);
+        Buffer bbb = (Buffer) bb;
+        bbb.position(tail_offset);
         long index = bb.getInt();
         boolean encryption = (index < 0);
         index = (0x7fffffff & index);
@@ -251,17 +254,17 @@ public class SRTCPProtocolImpl {
         }
         bb.get(authtag);
         Log.verb("Tail =" + tail_len + " index=" + index + " mkti=" + getHex(mikey) + " authtag=" + getHex(authtag) + " encryption=" + encryption);
-        bb.position(0);
+        bbb.position(0);
 
         if (encryption) {
             _scIn.deriveKeys(index); // or perhaps zero ?
             this.checkAuth(data, len);
              
-            bb.position(0);
+            bbb.position(0);
             decrypt(bb, len, tail_len, ssrc, index);
-            bb.position(0);
+            bbb.position(0);
             while (bb.remaining() >= CLEARHEAD + tail_len) {
-                Log.verb("RTCP packet starts at " + bb.position());
+                Log.verb("RTCP packet starts at " + bbb.position());
                 RTCP rtcp = RTCP.mkRTCP(bb);
                 Log.verb("RTCP packet was: " + rtcp.toString());
                 rtcps.add(rtcp);
@@ -339,19 +342,20 @@ public class SRTCPProtocolImpl {
 
     private void encrypt(ByteBuffer bbo, long idx, int ssrc) throws GeneralSecurityException {
         _scOut.deriveKeys(idx);
-        int pos = bbo.position();
+        Buffer bbbo = (Buffer) bbo;
+        int pos = bbbo.position();
         int paylen = pos - CLEARHEAD;
         int pl = (((paylen / 32) + 2) * 32);
         byte[] bin = new byte[paylen];
-        bbo.position(CLEARHEAD);
+        bbbo.position(CLEARHEAD);
         bbo.get(bin, 0, paylen);
         ByteBuffer in = ByteBuffer.wrap(bin);
         ByteBuffer out = ByteBuffer.allocate(pl);
         ByteBuffer pepper = getPepper(ssrc, idx);
         _scOut.decipher(in, out, pepper);
-        bbo.position(CLEARHEAD);
+        bbbo.position(CLEARHEAD);
         bbo.put(out.array(),0,paylen);
-        bbo.position(pos);
+        bbbo.position(pos);
     }
 
 

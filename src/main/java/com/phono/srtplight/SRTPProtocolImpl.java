@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.Properties;
@@ -201,7 +202,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
                 if (Log.getLevel() > Log.DEBUG) {
                     Log.verb("auth body " + getHex(m.array()));
                 }
-                m.position(0);
+                ((Buffer)m).position(0);
                 hmac.update(m);
                 byte[] mac = hmac.doFinal();
 
@@ -275,7 +276,7 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
                 if (Log.getLevel() > Log.DEBUG) {
                     Log.verb("auth body " + getHex(m.array()));
                 }
-                m.position(0);
+                ((Buffer)m).position(0);
 
                 mac.update(m);
                 byte[] auth = mac.doFinal();

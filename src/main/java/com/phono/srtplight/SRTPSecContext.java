@@ -20,6 +20,7 @@ package com.phono.srtplight;
 
 
 import biz.source_code.Base64Coder;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.Properties;
@@ -247,7 +248,7 @@ public class SRTPSecContext {
         ByteBuffer slop;
 
         int toget = stream.capacity() - 32; // ensuring that there are 16bytes of overhead
-        stream.position(0);
+        ((Buffer)stream).position(0);
         int blks = toget / blocksz;
         char bno = 0;
         // repeatedly encrypt the salt (and some pepper)
@@ -257,12 +258,12 @@ public class SRTPSecContext {
 
         for (; bno < blks; bno++) {
             asalt.putChar(14, bno);
-            asalt.position(0);
+            ((Buffer)asalt).position(0);
             aes.update(asalt, stream);
         }
         // now finish off the < 128 bits at the end.
         asalt.putChar(14, bno);
-        asalt.position(0);
+        ((Buffer)asalt).position(0);
         aes.doFinal(asalt, stream);
     }
 
@@ -273,10 +274,10 @@ public class SRTPSecContext {
             // odd special case where crypto wants bigger bucket
             ByteBuffer slop = ByteBuffer.allocate(want * 2);
             inp.putChar(14, (char) 0);
-            inp.position(0);
+            ((Buffer)inp).position(0);
             _anAES.doFinal(inp, slop);
             ret = new byte[want];
-            slop.position(0);
+            ((Buffer)slop).position(0);
             slop.get(ret);
         } else {
             ByteBuffer stream = ByteBuffer.allocate(want + 32);

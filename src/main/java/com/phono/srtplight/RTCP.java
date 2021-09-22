@@ -17,6 +17,7 @@
 package com.phono.srtplight;
 
 import static com.phono.srtplight.SRTPProtocolImpl.getHex;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,7 +91,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
      */
     static public RTCP mkRTCP(ByteBuffer bb) throws InvalidRTCPPacketException {
         RTCP ret = null;
-        int begin = bb.position();
+        int begin = ((Buffer)bb).position();
         char fh = bb.getChar();
         int v = (fh & ((char) (0xc000))) >>> 14;
         int p = (fh & ((char) (0x2000))) >>> 13;
@@ -126,7 +127,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 Log.debug("Ignoring unknown RTCP type =" + lpt);
                 break;
         }
-        bb.position(begin + offset + 4);
+        ((Buffer)bb).position(begin + offset + 4);
         return ret;
     }
 
