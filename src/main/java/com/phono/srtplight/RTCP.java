@@ -489,11 +489,13 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             ByteBuffer bb = ByteBuffer.wrap(fci);
             long lost = (long) bb.getChar();
             ret.add(lost);
+            long bits = (long) bb.getChar();
             for (int i=0;i<16;i++){
-                int bit = BitUtils.getBit(fci, i+16);
+                long bit = bits & 0x1;
                 if (bit != 0){
-                    ret.add(lost+i);
+                    ret.add(lost+i+1);
                 }
+                bits = bits >> 1;
             }
             return ret;
         }
