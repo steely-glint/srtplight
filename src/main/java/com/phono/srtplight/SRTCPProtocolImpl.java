@@ -71,6 +71,22 @@ public class SRTCPProtocolImpl {
         outbound(sr);
     }
 
+    public void sendPLI(long ssrc) throws IOException, GeneralSecurityException {
+        byte[] fci = {};
+        this.sendPSFB(fci, ssrc, 1);
+    }
+    
+    public void sendPSFB(byte fci[],long ssrc,int fmt) throws IOException, GeneralSecurityException {
+        RTCP.PSFB sr = RTCP.mkPSFB();
+        sr.setMssrc(ssrc);
+        sr.setFmt(fmt);
+        sr.setSssrc(ssrc);
+        sr.setSSRC(ssrc);
+        sr.setFci(fci);
+        Log.info("RTCP about to build " + sr);
+        outbound(sr);
+    }
+    
     public void sendRR() throws IOException, GeneralSecurityException {
         RTCP.ReceiverReport rr = RTCP.mkReceiverReport();
         rr.setSSRC(1L);

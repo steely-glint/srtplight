@@ -35,6 +35,8 @@ public class RTCP {
     final static int RTPFB = 205;
     final static int PSFB = 206;
 
+
+
     protected char pt;
     protected long ssrc;
 
@@ -91,7 +93,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
      */
     static public RTCP mkRTCP(ByteBuffer bb) throws InvalidRTCPPacketException {
         RTCP ret = null;
-        int begin = ((Buffer)bb).position();
+        int begin = ((Buffer) bb).position();
         char fh = bb.getChar();
         int v = (fh & ((char) (0xc000))) >>> 14;
         int p = (fh & ((char) (0x2000))) >>> 13;
@@ -127,7 +129,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 Log.debug("Ignoring unknown RTCP type =" + lpt);
                 break;
         }
-        ((Buffer)bb).position(begin + offset + 4);
+        ((Buffer) bb).position(begin + offset + 4);
         return ret;
     }
 
@@ -185,6 +187,28 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         pky = bbo.array();
         Log.verb("rro " + rro);
         Log.verb("rro " + getHex(pky));
+        
+        PSFB p = mkPSFB();
+        p.setSSRC(0x12345678);
+        p.setMssrc(0x23456789);
+        p.setSssrc(0x3456789A);
+        p.setFmt(1);
+        p.setFci(new byte[0]);
+        int pl = p.estimateBodyLength();
+        bbo = ByteBuffer.allocate(4 * (pl + 1));
+        p.addBody(bbo);
+        byte[] pa = bbo.array();
+        Log.info("PSFB " + p);
+        Log.info("PSFB " + getHex(pa));
+        try {
+            bbo.flip();
+            RTCP p2 = mkRTCP(bbo);
+            Log.info("PSFB "+p2.toString());
+        } catch (Exception x){
+            Log.warn("cant parse PSFB");
+            x.printStackTrace();
+        }
+        
     }
 
     public static SenderReport mkSenderReport() {
@@ -197,6 +221,10 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         return ret;
     }
 
+    static PSFB mkPSFB() {
+        PSFB ret = new PSFB();
+        return ret;
+    }
     int estimateBodyLength() { // this is int 32s -1
         return 1;
     }
@@ -376,14 +404,14 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             pt = RR;
         }
 
-        public ReportBlock[] getReports(){
+        public ReportBlock[] getReports() {
             ReportBlock[] ret = new ReportBlock[reports.size()];
-            for (int i=0;i<reports.size();i++){
-                ret[i] =  reports.get(i);
+            for (int i = 0; i < reports.size(); i++) {
+                ret[i] = reports.get(i);
             }
             return ret;
-        } 
-        
+        }
+
         public String toString() {
             String ret = "RTCP RR: ssrc=" + ssrc;
             for (ReportBlock b : reports) {
@@ -410,8 +438,8 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     public static class FB extends RTCP {
 
-        long sssrc;
-        long mssrc;
+        protected long sssrc;
+        protected long mssrc;
         protected int fmt;
         protected byte[] fci;
 
@@ -441,6 +469,16 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             bb.get(fci);
         }
 
+        protected FB() {
+            super();
+        }
+        @Override
+        public void addBody(ByteBuffer bb) {
+            super.addBody(bb);
+            bb.putInt((int)mssrc);
+            bb.put(fci);
+        }
+        
         public long getSssrc() {
             return sssrc;
         }
@@ -452,14 +490,51 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         public int getFmt() {
             return fmt;
         }
-
+        @Override
+        public int getRC() {
+            return fmt;
+        }
         public byte[] getFci() {
             return fci;
         }
 
+        @Override
         public String toString() {
             String ret = "RTCP FB: sssrc=" + sssrc + " mssrc=" + mssrc + " fmt=" + fmt + " fci length=" + fci.length;
             return ret;
+        }
+
+
+        @Override
+        int estimateBodyLength() {
+            return (fci.length/4) + 2;
+        }
+        /**
+         * @param sssrc the sssrc to set
+         */
+        public void setSssrc(long sssrc) {
+            this.sssrc = sssrc;
+        }
+
+        /**
+         * @param mssrc the mssrc to set
+         */
+        public void setMssrc(long mssrc) {
+            this.mssrc = mssrc;
+        }
+
+        /**
+         * @param fmt the fmt to set
+         */
+        public void setFmt(int fmt) {
+            this.fmt = fmt;
+        }
+
+        /**
+         * @param fci the fci to set
+         */
+        public void setFci(byte[] fci) {
+            this.fci = fci;
         }
     }
 
@@ -469,13 +544,29 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             super(bb, rc, length);
         }
 
+        protected PSFB() {
+            super();
+            pt = PSFB;
+        }
+
         public String toString() {
             String ret = "RTCP PSFB: sssrc=" + sssrc + " mssrc=" + mssrc + " fmt=" + fmt + " fci length=" + fci.length;
             return ret;
         }
+
+        @Override
+        public void addBody(ByteBuffer bb) {
+            super.addBody(bb);
+        }
+
+        @Override
+        int estimateBodyLength() {
+            return super.estimateBodyLength();
+        }
     }
+
     public static class RTPFB extends FB {
-        
+
         public RTPFB(ByteBuffer bb, int rc, int length) throws InvalidRTCPPacketException {
             super(bb, rc, length);
         }
@@ -484,22 +575,24 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             String ret = "RTCP RTPFB: sssrc=" + sssrc + " mssrc=" + mssrc + " fmt=" + fmt + " fci length=" + fci.length;
             return ret;
         }
-        public List<Long> getSeqList(){
+
+        public List<Long> getSeqList() {
             ArrayList<Long> ret = new ArrayList();
             ByteBuffer bb = ByteBuffer.wrap(fci);
             long lost = (long) bb.getChar();
             ret.add(lost);
             long bits = (long) bb.getChar();
-            for (int i=0;i<16;i++){
+            for (int i = 0; i < 16; i++) {
                 long bit = bits & 0x1;
-                if (bit != 0){
-                    ret.add(lost+i+1);
+                if (bit != 0) {
+                    ret.add(lost + i + 1);
                 }
                 bits = bits >> 1;
             }
             return ret;
         }
     }
+
     public class ReportBlock {
 
         /*
