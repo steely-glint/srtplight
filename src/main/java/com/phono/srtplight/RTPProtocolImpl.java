@@ -58,6 +58,8 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
     private Exception _lastx;
     private boolean _realloc = false;
     private long[] csrc;
+    private byte [] extens;
+    private Character extype;
 
     public RTPProtocolImpl(int id, DatagramSocket ds, InetSocketAddress far, int type) {
         _ds = ds;
@@ -99,6 +101,12 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         Log.debug("RTP session " + this.getClass().getSimpleName() + _session);
     }
 
+    public byte [] getExtens(){
+        return extens;
+    }
+    public Character getExtype(){
+        return extype;
+    }
     public void setSSRC(long v) {
         _csrcid = v;
     }
@@ -256,6 +264,7 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
         long stamp = 0;
         int sync = 0;
         int x = 0;
+        int exlen = 0;
 
         Log.verb("got packet " + plen);
 
@@ -284,7 +293,14 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             offs += 4;
         }
         if (x > 0) {
-            Log.error("Help! an extension! ");
+            extype = new Character(pb.getChar(offs));
+            offs+=2;
+            exlen = pb.getChar(offs);
+            offs+=2;
+            Log.verb("skip an extension 0x"+Integer.toHexString(extype)+" length "+exlen);
+            extens = new byte[4*exlen];
+            pb.get(offs,extens);
+            offs += extens.length;
         }
         int endhead = offs;
         // if padding set then last byte tells you how much to skip
