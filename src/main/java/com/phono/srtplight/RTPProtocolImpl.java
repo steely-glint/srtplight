@@ -299,8 +299,9 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             offs+=2;
             Log.verb("skip an extension 0x"+Integer.toHexString(extype)+" length "+exlen);
             extens = new byte[4*exlen];
-            pb.get(offs,extens);
-            offs += extens.length;
+            for (int i=0;i<extens.length;i++){
+                extens[i]= packet[offs++];
+            }
         } else {
             extype = null;
         }
