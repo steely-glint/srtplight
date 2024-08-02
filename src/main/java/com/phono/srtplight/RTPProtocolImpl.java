@@ -301,6 +301,8 @@ public class RTPProtocolImpl extends BitUtils implements RTPProtocolFace {
             extens = new byte[4*exlen];
             pb.get(offs,extens);
             offs += extens.length;
+        } else {
+            extype = null;
         }
         int endhead = offs;
         // if padding set then last byte tells you how much to skip
