@@ -10,3 +10,12 @@
  - issues,PRs,fixes etc are welcome
  - Apache license.
  - now used in |pipe| (see github.com/pipe/)
+
+## See also a minimal webRTC implemenation
+https://github.com/pipe/whipi
+based on this library, BouncyCastle and 
+https://github.com/steely-glint/slice
+
+
+
+
