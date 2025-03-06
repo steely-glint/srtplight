@@ -377,21 +377,6 @@ public class SRTPProtocolImpl extends RTPProtocolImpl {
 
     }
 
-    @Override
-    public void sendPacket(byte[] data, long stamp, int ptype, boolean marker) throws SocketException,
-            IOException {
-        try {
-            if (_doCrypt) {
-                _scOut.deriveKeys(stamp);
-                encrypt(data, (int) _csrcid, _seqno);
-            }
-            super.sendPacket(data, stamp, ptype, marker);
-        } catch (GeneralSecurityException ex) {
-            Log.error("problem encrypting packet" + ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-
     static ByteBuffer getPepper(int ssrc, long idx) {
         //(SSRC * 2^64) XOR (i * 2^16)
         ByteBuffer pepper = ByteBuffer.allocate(16);
